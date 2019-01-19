@@ -1,0 +1,11 @@
+name: Related Content
+description: Provide Custom  block to show related article content on node details page.
+package: Administration
+
+type: module
+# core: 8.x
+
+version: '8.x-1.25'
+core: '8.x'
+project: 'related_content'
+datestamp: 1547880061
