@@ -55,7 +55,6 @@ class ArticleService {
         ->execute();
     }
     $entities = $query->loadMultiple($query_result);
-    // kint($entities); die();
     return $entities;
   }
 
