@@ -54,7 +54,9 @@ class ArticleService {
         ->range(0, $limit)
         ->execute();
     }
-    return $query_result;
+    $entities = $query->loadMultiple($query_result);
+    // kint($entities); die();
+    return $entities;
   }
 
   /**
@@ -84,7 +86,8 @@ class ArticleService {
         ->range(0, $limit)
         ->execute();
     }
-    return $query_result;
+    $entities = $query->loadMultiple($query_result);
+    return $entities;
   }
 
 }

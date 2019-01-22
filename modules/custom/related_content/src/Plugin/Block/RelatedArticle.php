@@ -3,14 +3,12 @@
 namespace Drupal\related_content\Plugin\Block;
 
 use Drupal\node\NodeInterface;
-use Drupal\Core\Url;
 use Drupal\Core\Block\BlockBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Link;
 use Drupal\related_content\ArticleService;
 use Drupal\Core\Routing\CurrentRouteMatch;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\Entity\EntityTypeManager;
 
 /**
  * Provides a 'Related Content' Block.
@@ -24,16 +22,14 @@ use Drupal\Core\Entity\EntityTypeManager;
 class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterface {
   protected $articleService;
   protected $requestmatch;
-  protected $entityTypeManager;
 
   /**
    * Constructs new objects.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, ArticleService $article_service, CurrentRouteMatch $route_match, EntityTypeManager $entity_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, ArticleService $article_service, CurrentRouteMatch $route_match) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->articleService = $article_service;
     $this->routematch = $route_match;
-    $this->entityTypeManager = $entity_manager;
   }
 
   /**
@@ -45,8 +41,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
       $plugin_id,
       $plugin_definition,
       $container->get('related_content.articles'),
-      $container->get('current_route_match'),
-      $container->get('entity_type.manager')
+      $container->get('current_route_match')
     );
   }
 
@@ -69,7 +64,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
   }
 
   /**
-   * This method is created to send data to header section block.
+   * This method is created to send data to Related Content block.
    */
   private function getData() {
     $uid = 0;
@@ -86,12 +81,12 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
       $categories_array[] = $row['target_id'];
     }
     $limit = 5;
-    // Fetch same category article by same user.
+    // Criteria-1: Fetch same category article by same user.
     $entity_ids = $this->articleService->fetchRelatedArticlesSameCategory(TRUE, $nid, $uid, $categories_array, $limit);
 
     $count_article = count($entity_ids);
     if ($count_article < 5) {
-      // Fetch same category article by different user.
+      // Criteria-2: Fetch same category article by different user.
       $limit = $limit - $count_article;
       $new_articles = $this->articleService->fetchRelatedArticlesSameCategory(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
@@ -99,7 +94,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
 
     $count_article = count($entity_ids);
     if ($count_article < 5) {
-      // Fetch same category article by different user.
+      // Criteria-3: Fetch different category article by same user.
       $limit = $limit - $count_article;
       $new_articles = $this->articleService->fetchRelatedArticlesDifferentCategory(TRUE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
@@ -107,21 +102,22 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     // dsm('using services');.
     $count_article = count($entity_ids);
     if ($count_article < 5) {
-      // Fetch same category article by different user.
+      // Criteria-4: Fetch different category article by different user.
       $limit = $limit - $count_article;
       $new_articles = $this->articleService->fetchRelatedArticlesDifferentCategory(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 
     foreach ($entity_ids as $art) {
-      $options = ['absolute' => TRUE];
-      $url = Url::fromRoute('entity.node.canonical', ['node' => $art], $options);
-      $node = $this->entityTypeManager->getStorage('node')->load($art);
-      $author_user = $this->entityTypeManager->getStorage('user')->load($node->getOwnerId());
-      $author_name = $author_user->getUsername();
-      $title = $node->get('title')->getString();
+      $url = $art->toUrl();
+      $author_name = $art->getOwner()->getAccountName();
+      if (!$author_name) {
+        $author_name = "Anonymous";
+      }
+      // $node->get('title')->getString();
+      $title = $art->getTitle();
       $items[] = [
-        '#markup' => Link::fromTextAndUrl($title . " (" . $author_name . ")", $url)->toString(),
+        '#markup' => Link::fromTextAndUrl($title, $url)->toString() . " (Author: " . $author_name . ")",
         '#wrapper_attributes' => [
           'class' => [
             'wrapper__links__link',
@@ -130,7 +126,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
       ];
     }
 
-    $build['item_list'] = [
+    $item_list = [
       '#theme' => 'item_list',
       '#list_type' => 'ul',
       '#wrapper_attributes' => [
@@ -145,8 +141,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
       ],
       '#items' => $items,
     ];
-
-    return $build['item_list'];
+    return $item_list;
   }
 
 }

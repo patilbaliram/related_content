@@ -5,7 +5,7 @@ package: Administration
 type: module
 # core: 8.x
 
-version: '8.x-1.25'
+version: '8.x-1.0'
 core: '8.x'
 project: 'related_content'
 datestamp: 1547880061
