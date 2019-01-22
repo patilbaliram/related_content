@@ -1,14 +1,17 @@
 <?php
 
-/**
- * @file providing the service that return list of related articles.
- *
- */
-
 namespace Drupal\related_content;
 
+use Drupal\workspaces\EntityQuery;
+
+/**
+ *
+ */
 class ArticleService {
 
+  /**
+   *
+   */
   public function fetchRelatedArticles($same_category = TRUE, $nid, $user_id = NULL, $categories, $limit = 5) {
     $query = \Drupal::entityQuery('node');
     $query->condition('status', 1);
