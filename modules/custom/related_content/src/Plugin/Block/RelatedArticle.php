@@ -89,13 +89,13 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     }
     $limit = 5;
     // Fetch same category article by same user.
-    $entity_ids = $this->article_service->fetchRelatedArticles(TRUE, $nid, $uid, $categories_array, $limit);
+    $entity_ids = $this->article_service->fetchRelatedArticlesSameCategory(TRUE, $nid, $uid, $categories_array, $limit);
 
     $count_article = count($entity_ids);
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->article_service->fetchRelatedArticles(TRUE, $nid, NULL, $categories_array, $limit);
+      $new_articles = $this->article_service->fetchRelatedArticlesSameCategory(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 
@@ -103,7 +103,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->article_service->fetchRelatedArticles(FALSE, $nid, $uid, $categories_array, $limit);
+      $new_articles = $this->article_service->fetchRelatedArticlesDifferentCategory(TRUE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
     // dsm('using services');.
@@ -111,7 +111,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->article_service->fetchRelatedArticles(FALSE, $nid, NULL, $categories_array, $limit);
+      $new_articles = $this->article_service->fetchRelatedArticlesDifferentCategory(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 

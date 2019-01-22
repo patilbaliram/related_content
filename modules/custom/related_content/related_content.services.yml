@@ -1,4 +1,5 @@
 services:
   related_content.articles:
     class: Drupal\related_content\ArticleService
+    arguments: ['@entity_type.manager']
    
