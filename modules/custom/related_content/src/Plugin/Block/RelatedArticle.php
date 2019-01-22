@@ -99,7 +99,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
       $new_articles = $this->articleService->fetchRelatedArticlesDifferentCategory(TRUE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
-    
+
     $count_article = count($entity_ids);
     if ($count_article < 5) {
       // Criteria-4: Fetch different category article by different user.
@@ -114,7 +114,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
       if (!$author_name) {
         $author_name = "Anonymous";
       }
-      
+
       $title = $art->getTitle();
       $items[] = [
         '#markup' => Link::fromTextAndUrl($title, $url)->toString() . " (Author: " . $author_name . ")",
