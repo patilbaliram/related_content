@@ -6,15 +6,13 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- *
+ * Article service to get related article.
  */
 class ArticleService {
   protected $entityTypeManager;
 
   /**
    * Constructs a new EntityTypeManager object.
-   *
-   * @param Drupal\Core\Entity\EntityTypeManagerInterface
    */
   public function __construct(EntityTypeManagerInterface $entityTypeManager) {
     $this->entityTypeManager = $entityTypeManager;

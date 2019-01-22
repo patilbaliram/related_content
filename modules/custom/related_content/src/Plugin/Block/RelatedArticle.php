@@ -22,22 +22,22 @@ use Drupal\Core\Entity\EntityTypeManager;
  * )
  */
 class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterface {
-  protected $article_service;
+  protected $articleService;
   protected $requestmatch;
-  protected $entity_type_manager;
+  protected $entityTypeManager;
 
   /**
-   *
+   * Constructs new objects.
    */
   public function __construct(array $configuration, $plugin_id, $plugin_definition, ArticleService $article_service, CurrentRouteMatch $route_match, EntityTypeManager $entity_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
-    $this->article_service = $article_service;
+    $this->articleService = $article_service;
     $this->routematch = $route_match;
-    $this->entity_type_manager = $entity_manager;
+    $this->entityTypeManager = $entity_manager;
   }
 
   /**
-   *
+   * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static(
@@ -70,8 +70,6 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
 
   /**
    * This method is created to send data to header section block.
-   *
-   * @return array
    */
   private function getData() {
     $uid = 0;
@@ -89,13 +87,13 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     }
     $limit = 5;
     // Fetch same category article by same user.
-    $entity_ids = $this->article_service->fetchRelatedArticlesSameCategory(TRUE, $nid, $uid, $categories_array, $limit);
+    $entity_ids = $this->articleService->fetchRelatedArticlesSameCategory(TRUE, $nid, $uid, $categories_array, $limit);
 
     $count_article = count($entity_ids);
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->article_service->fetchRelatedArticlesSameCategory(FALSE, $nid, $uid, $categories_array, $limit);
+      $new_articles = $this->articleService->fetchRelatedArticlesSameCategory(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 
@@ -103,7 +101,7 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->article_service->fetchRelatedArticlesDifferentCategory(TRUE, $nid, $uid, $categories_array, $limit);
+      $new_articles = $this->articleService->fetchRelatedArticlesDifferentCategory(TRUE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
     // dsm('using services');.
@@ -111,15 +109,15 @@ class RelatedArticle extends BlockBase implements ContainerFactoryPluginInterfac
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->article_service->fetchRelatedArticlesDifferentCategory(FALSE, $nid, $uid, $categories_array, $limit);
+      $new_articles = $this->articleService->fetchRelatedArticlesDifferentCategory(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 
     foreach ($entity_ids as $art) {
       $options = ['absolute' => TRUE];
       $url = Url::fromRoute('entity.node.canonical', ['node' => $art], $options);
-      $node = $this->entity_type_manager->getStorage('node')->load($art);
-      $author_user = $this->entity_type_manager->getStorage('user')->load($node->getOwnerId());
+      $node = $this->entityTypeManager->getStorage('node')->load($art);
+      $author_user = $this->entityTypeManager->getStorage('user')->load($node->getOwnerId());
       $author_name = $author_user->getUsername();
       $title = $node->get('title')->getString();
       $items[] = [
