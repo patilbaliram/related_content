@@ -1,12 +1,14 @@
 <?php
+
 namespace Drupal\related_content\Plugin\Block;
 
+use Drupal\Core\Url;
+use Drupal\node\NodeInterface;
 use Drupal\Core\Block\BlockBase;
-use Drupal\Core\Entity\Query\QueryFactory;
-use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Link;
 
 /**
- * Provides a 'Header Section' Block.
+ * Provides a 'Related Content' Block.
  *
  * @Block(
  *   id = "related_article",
@@ -14,24 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
  *   category = @Translation("Related Article")
  * )
  */
-
 class RelatedArticle extends BlockBase {
- /**
-  * Drupal\Core\Entity\Query\QueryFactory definition.
-  *
-  * @var Drupal\Core\Entity\Query\QueryFactory
-  */
-//    protected $entityQuery;
-//
-//    public function __construct(QueryFactory $entityQuery) {
-//        $this->entityQuery = $entityQuery;
-//    }
-//
-//    public static function create(ContainerInterface $container) {
-//        return new static(
-//                $container->get('entity.query')
-//        );
-//    }
 
   /**
    * {@inheritdoc}
@@ -44,14 +29,18 @@ class RelatedArticle extends BlockBase {
     return [
       '#theme' => 'related_article_block',
       '#data' => $data,
+      '#cache' => [
+        'contexts' => ['url.path'],
+        'max-age' => 0,
+      ],
     ];
   }
 
-/**
- * This method is created to send data to header section block
- * 
- * @return array
- */
+  /**
+   * This method is created to send data to header section block
+   * 
+   * @return array
+   */
   private function getData() {
     $uid = 0;
     $nid = 0;
@@ -61,36 +50,51 @@ class RelatedArticle extends BlockBase {
       $categories = $node->get('field_tags')->getValue();
       $uid = $node->get('uid')->getString();
     }
-        
+
     $categories_array = [];
     foreach ($categories as $row) {
       $categories_array[] = $row['target_id'];
     }
-       
-    $query = \Drupal::entityQuery('node');
-//        $group = $query->orConditionGroup() 
-//        ->condition('uid', $uid) 
-//        ->condition('uid', 14) ;
-    $query->condition('status', 1);
-    $query->condition('nid', $nid, '!=');
-    $query->condition('type', 'article');
-    $query->condition('field_tags', $categories_array, 'IN');
-    $query->range(0, 5);
-    $entity_ids = $query->execute();
-      
+    $limit = 5;
+    // Fetch same category article by same user.
+    $entity_ids = $this->fetchArticlesBySameCategory($nid, $uid, $categories_array, $limit);
+    $count_article = count($entity_ids);
+    if ($count_article < 5) {
+      // Fetch same category article by different user.
+      $limit = $limit - $count_article;
+      $new_articles = $this->fetchArticlesBySameCategory($nid, NULL, $categories_array, $limit);
+      $entity_ids = array_merge($entity_ids, $new_articles);
+    }
+
+    $count_article = count($entity_ids);
+    if ($count_article < 5) {
+      // Fetch same category article by different user.
+      $limit = $limit - $count_article;
+      $new_articles = $this->fetchArticlesByDifferentCategory($nid, $uid, $categories_array, $limit);
+      $entity_ids = array_merge($entity_ids, $new_articles);
+    }
+
+    $count_article = count($entity_ids);
+    if ($count_article < 5) {
+      // Fetch same category article by different user.
+      $limit = $limit - $count_article;
+      $new_articles = $this->fetchArticlesByDifferentCategory($nid, NULL, $categories_array, $limit);
+      $entity_ids = array_merge($entity_ids, $new_articles);
+    }
 
     foreach ($entity_ids as $art) {
       $options = ['absolute' => TRUE];
-      $url = \Drupal\Core\Url::fromRoute('entity.node.canonical', ['node' => $art], $options);
-      $url = $url->toString();
+      $url = Url::fromRoute('entity.node.canonical', ['node' => $art], $options);
       $article = entity_load('node', $art);
+      $node = \Drupal::entityManager()->getStorage('node')->load($art);
+      $author_user = \Drupal::entityManager()->getStorage('user')->load($node->getOwnerId());
+      $author_name = $author_user->getUsername();
       $title = $article->get('title')->getString();
-       
       $items[] = [
-        '#markup' => '<a href="' . $url . '">' . $title . ' ()</a>',
+        '#markup' => Link::fromTextAndUrl($title . " (" . $author_name . ")", $url)->toString(),
         '#wrapper_attributes' => [
           'class' => [
-             'wrapper__links__link',
+            'wrapper__links__link',
           ],
         ],
       ];
@@ -100,20 +104,57 @@ class RelatedArticle extends BlockBase {
       '#theme' => 'item_list',
       '#list_type' => 'ul',
       '#wrapper_attributes' => [
-          'class' => [
-             'wrapper',
-            ],
+        'class' => [
+          'wrapper',
         ],
-        '#attributes' => [
-            'class' => [
-                'wrapper__links',
-            ],
+      ],
+      '#attributes' => [
+        'class' => [
+          'wrapper__links',
         ],
-        '#items' => $items,
+      ],
+      '#items' => $items,
     ];
 
     return $build['item_list'];
+  }
 
+  /**
+   * Function to fetch articles by same categories.
+   */
+  private function fetchArticlesBySameCategory($nid, $user_id, $categories, $limit = 5) {
+    $query = \Drupal::entityQuery('node');
+    $query->condition('status', 1);
+    $query->condition('nid', $nid, '!=');
+    if ($user_id !== NULL) {
+      $query->condition('uid', $user_id);
     }
+    $query->condition('type', 'article');
+    $query->condition('field_tags', $categories, 'IN');
+    $query->groupBy('uid');
+    $query->sort('title', 'ASC');
+    $query->range(0, $limit);
+    $entity_ids = $query->execute();
+    return $entity_ids;
+  }
+
+  /**
+   * Function to fetch articles by different categories.
+   */
+  private function fetchArticlesByDifferentCategory($nid, $user_id, $categories, $limit = 5) {
+    $query = \Drupal::entityQuery('node');
+    $query->condition('status', 1);
+    $query->condition('nid', $nid, '!=');
+    if ($user_id !== NULL) {
+      $query->condition('uid', $user_id);
+    }
+    $query->condition('type', 'article');
+    $query->condition('field_tags', $categories, 'NOT IN');
+    $query->groupBy('uid');
+    $query->sort('title', 'ASC');
+    $query->range(0, $limit);
+    $entity_ids = $query->execute();
+    return $entity_ids;
+  }
 
 }
