@@ -56,13 +56,14 @@ class RelatedArticle extends BlockBase {
       $categories_array[] = $row['target_id'];
     }
     $limit = 5;
+    $service = \Drupal::service('related_content.articles');
     // Fetch same category article by same user.
-    $entity_ids = $this->fetchArticlesBySameCategory($nid, $uid, $categories_array, $limit);
+    $entity_ids = $service->fetchRelatedArticles(TRUE, $nid, $uid, $categories_array, $limit);
     $count_article = count($entity_ids);
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->fetchArticlesBySameCategory($nid, NULL, $categories_array, $limit);
+      $new_articles = $service->fetchRelatedArticles(TRUE, $nid, NULL, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 
@@ -70,15 +71,15 @@ class RelatedArticle extends BlockBase {
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->fetchArticlesByDifferentCategory($nid, $uid, $categories_array, $limit);
+      $new_articles = $service->fetchRelatedArticles(FALSE, $nid, $uid, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
-
+    //dsm('using services');
     $count_article = count($entity_ids);
     if ($count_article < 5) {
       // Fetch same category article by different user.
       $limit = $limit - $count_article;
-      $new_articles = $this->fetchArticlesByDifferentCategory($nid, NULL, $categories_array, $limit);
+      $new_articles = $service->fetchRelatedArticles(FALSE, $nid, NULL, $categories_array, $limit);
       $entity_ids = array_merge($entity_ids, $new_articles);
     }
 
@@ -117,44 +118,6 @@ class RelatedArticle extends BlockBase {
     ];
 
     return $build['item_list'];
-  }
-
-  /**
-   * Function to fetch articles by same categories.
-   */
-  private function fetchArticlesBySameCategory($nid, $user_id, $categories, $limit = 5) {
-    $query = \Drupal::entityQuery('node');
-    $query->condition('status', 1);
-    $query->condition('nid', $nid, '!=');
-    if ($user_id !== NULL) {
-      $query->condition('uid', $user_id);
-    }
-    $query->condition('type', 'article');
-    $query->condition('field_tags', $categories, 'IN');
-    $query->groupBy('uid');
-    $query->sort('title', 'ASC');
-    $query->range(0, $limit);
-    $entity_ids = $query->execute();
-    return $entity_ids;
-  }
-
-  /**
-   * Function to fetch articles by different categories.
-   */
-  private function fetchArticlesByDifferentCategory($nid, $user_id, $categories, $limit = 5) {
-    $query = \Drupal::entityQuery('node');
-    $query->condition('status', 1);
-    $query->condition('nid', $nid, '!=');
-    if ($user_id !== NULL) {
-      $query->condition('uid', $user_id);
-    }
-    $query->condition('type', 'article');
-    $query->condition('field_tags', $categories, 'NOT IN');
-    $query->groupBy('uid');
-    $query->sort('title', 'ASC');
-    $query->range(0, $limit);
-    $entity_ids = $query->execute();
-    return $entity_ids;
   }
 
 }

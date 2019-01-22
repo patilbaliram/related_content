@@ -1,0 +1,4 @@
+services:
+  related_content.articles:
+    class: Drupal\related_content\ArticleService
+   
